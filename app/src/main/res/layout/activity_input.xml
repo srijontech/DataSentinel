@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFFFFF">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Data Entry"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#006666"
+        android:layout_marginBottom="24dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Category"
+        app:boxStrokeWidth="2dp"
+        app:boxStrokeColor="#008080"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <AutoCompleteTextView
+            android:id="@+id/editCategory"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:textColor="#000000"
+            android:padding="12dp"
+            android:completionThreshold="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="Sub-category (optional)"
+        app:boxStrokeWidth="2dp"
+        app:boxStrokeColor="#008080"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <EditText
+            android:id="@+id/editSubCategory"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:textColor="#000000"
+            android:padding="12dp"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:hint="Content/Secret Data"
+        app:boxStrokeWidth="2dp"
+        app:boxStrokeColor="#008080"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <EditText
+            android:id="@+id/editContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="top"
+            android:textColor="#000000"
+            android:padding="12dp"
+            android:inputType="textMultiLine" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#008080"
+        android:text="SAVE SECURELY" />
+</LinearLayout>
