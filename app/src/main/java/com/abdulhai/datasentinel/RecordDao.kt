@@ -4,7 +4,7 @@ import androidx.room.*
 
 @Dao
 interface RecordDao {
-    @Query("SELECT * FROM records ORDER BY timestamp DESC")
+    @Query("SELECT * FROM records ORDER BY id DESC")
     suspend fun getAllRecords(): List<MyRecord>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -13,6 +13,6 @@ interface RecordDao {
     @Delete
     suspend fun deleteRecord(record: MyRecord)
 
-    @Query("SELECT * FROM records WHERE id = :id")
-    suspend fun getRecordById(id: Int): MyRecord?
+    @Query("SELECT * FROM records WHERE id = :recordId")
+    suspend fun getRecordById(recordId: Int): MyRecord?
 }

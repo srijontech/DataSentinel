@@ -1,79 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardView"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="12dp"
     app:cardElevation="4dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:background="#afc2b5">
+        android:padding="12dp">
 
-        <LinearLayout
-            android:id="@+id/textContainer"
+        <TextView
+            android:id="@+id/textCategory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_toStartOf="@id/actionContainer"
-            android:layout_alignParentStart="true"
-            android:orientation="vertical">
+            android:text="Category"
+            android:textColor="#004D40"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/textCategory"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Category"
-                android:textColor="#092E2E"
-                android:textStyle="bold"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/textSubCategory"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Sub-Category"
-                android:textColor="#092E2E"
-                android:textStyle="bold"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/textContent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Secret Content"
-                android:textColor="#092E2E"
-                android:textStyle="bold"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/actionContainer"
+        <TextView
+            android:id="@+id/textSubCategory"
+            android:layout_below="@id/textCategory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Sub-Category"
+            android:textColor="#00695C"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/textContent"
+            android:layout_below="@id/textSubCategory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Secret Data Content"
+            android:textColor="#000000"
+            android:textSize="16sp" />
+
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:orientation="horizontal">
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_delete"
+            app:tint="#D32F2F" />
 
-            <ImageButton
-                android:id="@+id/btnEdit"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_edit"
-                app:tint="#FFFFFF" />
-
-            <ImageButton
-                android:id="@+id/btnDelete"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_delete"
-                app:tint="#FFFFFF" />
-        </LinearLayout>
-
+        <ImageButton
+            android:id="@+id/btnEdit"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_toStartOf="@id/btnDelete"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="#006666" />
     </RelativeLayout>
 </androidx.cardview.widget.CardView>

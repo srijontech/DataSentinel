@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [MyRecord::class], version = 1)
+@Database(entities = [MyRecord::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun recordDao(): RecordDao
 
@@ -18,7 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "sentinel_database"
+                    "data_sentinel_db"
                 ).build()
                 INSTANCE = instance
                 instance

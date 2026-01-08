@@ -8,6 +8,5 @@ data class MyRecord(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val category: String,
     val subCategory: String,
-    val content: String, // We use one content field for simplicity
-    val timestamp: Long = System.currentTimeMillis()
+    val content: String
 )

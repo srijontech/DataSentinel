@@ -1,78 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8F9FA">
+    android:background="#FFFFFF">
 
-    <RelativeLayout
-        android:id="@+id/headerBar"
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#006666"
-        android:padding="16dp"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent">
 
-        <TextView
-            android:id="@+id/textHeader"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="#006666"
+                app:titleTextColor="#FFFFFF" />
+
+            <EditText
+                android:id="@+id/searchBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:hint="Search Category, Sub or Content..."
+                android:padding="12dp"
+                android:background="@android:drawable/editbox_background_normal" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="8dp"
+                android:text="Data Sentinel v2.0 | Abdul Hai Bhuyan"
+                android:textSize="10sp"
+                android:textColor="#000000" />
+        </LinearLayout>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabAdd"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Data Sentinel"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <ImageButton
-            android:id="@+id/btnExport"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_alignParentEnd="true"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_share"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="24dp"
+            android:src="@android:drawable/ic_input_add"
+            app:backgroundTint="#006666"
             app:tint="#FFFFFF" />
-    </RelativeLayout>
 
-    <EditText
-        android:id="@+id/searchBar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_margin="12dp"
-        android:background="@android:drawable/editbox_background"
-        android:drawableStart="@android:drawable/ic_menu_search"
-        android:hint=" Search entries..."
-        android:padding="12dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/headerBar" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/textFooter"
-        app:layout_constraintTop_toBottomOf="@id/searchBar" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAdd"
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/navView"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="24dp"
-        android:backgroundTint="#008080"
-        android:src="@android:drawable/ic_input_add"
-        app:layout_constraintBottom_toTopOf="@id/textFooter"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:tint="@color/white" />
+        android:layout_height="match_parent"
+        android:layout_gravity="start">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+            <include layout="@layout/nav_header" />
+            <ScrollView android:layout_width="match_parent" android:layout_height="wrap_content">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-    <TextView
-        android:id="@+id/textFooter"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#EEEEEE"
-        android:gravity="center"
-        android:padding="10dp"
-        android:text="Developed By: Abdul Hai Bhuyan, AGM, BD&amp;R, AVG"
-        android:textColor="#555555"
-        android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SORT / VIEW" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp" android:textColor="#006666"/>
+                    <Button android:id="@+id/menuDefault" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Default (Show All)" android:backgroundTint="#004D40" android:textColor="#FFFFFF" android:layout_marginBottom="4dp"/>
+                    <Button android:id="@+id/menuCategoryView" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="By Category" android:backgroundTint="#00695C" android:textColor="#FFFFFF" android:layout_marginBottom="4dp"/>
+                    <Button android:id="@+id/menuSubCategoryView" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="By Sub-Category" android:backgroundTint="#00796B" android:textColor="#FFFFFF" android:layout_marginBottom="16dp"/>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TOOLS" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp" android:textColor="#006666"/>
+                    <Button android:id="@+id/menuBackup" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Backup Reminder" android:backgroundTint="#036C5F" android:textColor="#FFFFFF" android:layout_marginBottom="4dp"/>
+                    <Button android:id="@+id/menuImport" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Import CSV" android:backgroundTint="#048C7F" android:textColor="#FFFFFF" android:layout_marginBottom="4dp"/>
+                    <Button android:id="@+id/menuExport" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Export CSV" android:backgroundTint="#006666" android:textColor="#FFFFFF" android:layout_marginBottom="4dp"/>
+                    <Button android:id="@+id/menuTimeout" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Time-out Settings" android:backgroundTint="#28A99E" android:textColor="#FFFFFF" android:layout_marginBottom="16dp"/>
+
+                    <Button android:id="@+id/menuLogout" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="LOGOUT" android:backgroundTint="#FF0000" android:textColor="#FFFFFF" android:textStyle="bold" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </com.google.android.material.navigation.NavigationView>
+</androidx.drawerlayout.widget.DrawerLayout>

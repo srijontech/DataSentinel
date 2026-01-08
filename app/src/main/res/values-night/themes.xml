@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.DataSentinel" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#BB86FC</item>
-        <item name="colorOnPrimary">#000000</item>
-        <item name="colorSecondary">#03DAC6</item>
-        <item name="android:statusBarColor">#000000</item>
-        parent="Theme.AppCompat.DayNight.NoActionBar"
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.DataSentinel" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#006666</item>
+        <item name="colorPrimaryVariant">#004D4D</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:statusBarColor">#004D4D</item>
     </style>
+
+    <style name="Theme.DataSentinel" parent="Base.Theme.DataSentinel" />
 </resources>

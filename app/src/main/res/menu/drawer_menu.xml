@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_profile"
+        android:title="Profile Settings" />
+    <item
+        android:id="@+id/nav_filter"
+        android:title="Filter Entries" />
+    <item
+        android:id="@+id/nav_backup"
+        android:title="Backup Reminder" />
+    <item
+        android:id="@+id/nav_import"
+        android:title="Import Data" />
+    <item
+        android:id="@+id/nav_timeout"
+        android:title="Auto Logout Timeout" />
+    <item
+        android:id="@+id/nav_logout"
+        android:title="Logout" />
+</menu>
