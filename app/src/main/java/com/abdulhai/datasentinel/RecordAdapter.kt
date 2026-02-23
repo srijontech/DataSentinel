@@ -14,7 +14,8 @@ class RecordAdapter(
     private val onDelete: (MyRecord) -> Unit,
     private val onEdit: (MyRecord) -> Unit,
     private val onHeaderClick: (String) -> Unit,
-    private val onShare: (MyRecord) -> Unit // v2.3 Sync
+    private val onShare: (MyRecord) -> Unit,
+    private val onLongClick: (MyRecord) -> Unit // v2.4 callback
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -38,7 +39,6 @@ class RecordAdapter(
         val item = items[position]
         if (holder is RecordViewHolder && item is MyRecord) {
             holder.card.setCardBackgroundColor(Color.parseColor("#93C5CF"))
-
             holder.category.text = item.category
             holder.subCategory.text = item.subCategory
             holder.content.text = item.content
@@ -46,6 +46,12 @@ class RecordAdapter(
             holder.btnDelete.setOnClickListener { onDelete(item) }
             holder.btnEdit.setOnClickListener { onEdit(item) }
             holder.btnShare.setOnClickListener { onShare(item) }
+
+            // v2.4: Long Click triggers the copy callback
+            holder.card.setOnLongClickListener {
+                onLongClick(item)
+                true // Returns true so it doesn't trigger a normal click
+            }
         } else if (holder is HeaderViewHolder && item is String) {
             holder.headerText.text = item
             holder.itemView.setOnClickListener { onHeaderClick(item) }

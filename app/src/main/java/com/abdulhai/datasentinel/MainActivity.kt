@@ -1,7 +1,7 @@
 package com.abdulhai.datasentinel
 
 import android.app.AlertDialog
-import android.content.Intent
+import android.content.*
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -58,12 +58,13 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
 
-        // Updated for v2.3: Added onShare callback
+        // Updated for v2.4: Added the 6th parameter for Long Click
         adapter = RecordAdapter(listOf(),
             onDelete = { r -> confirmAction("Delete entry?") { lifecycleScope.launch { db.recordDao().deleteRecord(r); loadData() } } },
             onEdit = { r -> confirmAction("Edit entry?") { startActivity(Intent(this, InputActivity::class.java).putExtra("RECORD_ID", r.id)) } },
             onHeaderClick = { name -> handleDrillDown(name) },
-            onShare = { r -> shareRecord(r) }
+            onShare = { r -> shareRecord(r) },
+            onLongClick = { r -> showCopyDialog(r) }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
@@ -94,12 +95,21 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
     }
 
-    // --- SHARE: v2.3 Individual Record Sharing ---
+    // --- NEW IN v2.4: Copy Dialog ---
+    private fun showCopyDialog(record: MyRecord) {
+        AlertDialog.Builder(this)
+            .setItems(arrayOf("Copy Content")) { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Sentinel Content", record.content)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+            }.show()
+    }
+
     private fun shareRecord(record: MyRecord) {
-        val shareBody = "Category: ${record.category}\nSub-Category: ${record.subCategory}\n\n${record.content}"
+        val shareBody = "Category: ${record.category}\nSub: ${record.subCategory}\n\n${record.content}"
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Secret Data: ${record.category}")
             putExtra(Intent.EXTRA_TEXT, shareBody)
         }
         startActivity(Intent.createChooser(intent, "Share via"))
@@ -123,19 +133,16 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.title = header
     }
 
-    // --- EXPORT: Uses [BR] marker to keep records on one line ---
     private fun exportToCsv() {
         lifecycleScope.launch {
             try {
                 val file = File(getExternalFilesDir(null), "DataSentinel_Backup.csv")
                 val out = StringBuilder()
                 out.append("Category,SubCategory,Content\n")
-
                 allRecords.forEach {
                     val safeContent = it.content.replace("\n", "[BR]").replace("\r", "[BR]")
                     out.append("${it.category},${it.subCategory},$safeContent\n")
                 }
-
                 withContext(Dispatchers.IO) { file.writeText(out.toString()) }
                 val uri = FileProvider.getUriForFile(this@MainActivity, "${packageName}.provider", file)
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -151,7 +158,6 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, 99)
     }
 
-    // --- IMPORT: Robust split handles infinite commas in Content ---
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 99 && resultCode == RESULT_OK) {
@@ -163,21 +169,16 @@ class MainActivity : AppCompatActivity() {
                             val existingRecords = db.recordDao().getAllRecords()
                             val inputStream = contentResolver.openInputStream(uri)
                             val reader = BufferedReader(InputStreamReader(inputStream))
-
-                            reader.readLine() // Skip Header
-
+                            reader.readLine()
                             reader.forEachLine { line ->
-                                // Split only on first two commas.
                                 val parts = line.split(",", limit = 3)
                                 if (parts.size >= 3) {
                                     val cat = parts[0].trim()
                                     val sub = parts[1].trim()
                                     val con = parts[2].trim().replace("[BR]", "\n")
-
                                     if (cat.isNotEmpty()) {
                                         val isDuplicate = existingRecords.any {
-                                            it.category.equals(cat, ignoreCase = true) &&
-                                                    it.subCategory.equals(sub, ignoreCase = true)
+                                            it.category.equals(cat, ignoreCase = true) && it.subCategory.equals(sub, ignoreCase = true)
                                         }
                                         if (!isDuplicate) newRecords.add(MyRecord(0, cat, sub, con))
                                     }
