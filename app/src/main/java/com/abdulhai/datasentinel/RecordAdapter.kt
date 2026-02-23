@@ -13,7 +13,8 @@ class RecordAdapter(
     private var items: List<Any>,
     private val onDelete: (MyRecord) -> Unit,
     private val onEdit: (MyRecord) -> Unit,
-    private val onHeaderClick: (String) -> Unit
+    private val onHeaderClick: (String) -> Unit,
+    private val onShare: (MyRecord) -> Unit // v2.3 Sync
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -36,7 +37,6 @@ class RecordAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = items[position]
         if (holder is RecordViewHolder && item is MyRecord) {
-            // Apply your specific card color
             holder.card.setCardBackgroundColor(Color.parseColor("#93C5CF"))
 
             holder.category.text = item.category
@@ -45,6 +45,7 @@ class RecordAdapter(
 
             holder.btnDelete.setOnClickListener { onDelete(item) }
             holder.btnEdit.setOnClickListener { onEdit(item) }
+            holder.btnShare.setOnClickListener { onShare(item) }
         } else if (holder is HeaderViewHolder && item is String) {
             holder.headerText.text = item
             holder.itemView.setOnClickListener { onHeaderClick(item) }
@@ -58,7 +59,6 @@ class RecordAdapter(
         notifyDataSetChanged()
     }
 
-    // ViewHolder for Actual Data Cards
     class RecordViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val card: CardView = view.findViewById(R.id.cardView)
         val category: TextView = view.findViewById(R.id.textCategory)
@@ -66,9 +66,9 @@ class RecordAdapter(
         val content: TextView = view.findViewById(R.id.textContent)
         val btnDelete: ImageButton = view.findViewById(R.id.btnDelete)
         val btnEdit: ImageButton = view.findViewById(R.id.btnEdit)
+        val btnShare: ImageButton = view.findViewById(R.id.btnShare)
     }
 
-    // ViewHolder for Category/Sub-Category Selection Heads
     class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val headerText: TextView = view.findViewById(R.id.headerText)
     }

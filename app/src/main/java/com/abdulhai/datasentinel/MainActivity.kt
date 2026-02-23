@@ -58,10 +58,12 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
 
+        // Updated for v2.3: Added onShare callback
         adapter = RecordAdapter(listOf(),
             onDelete = { r -> confirmAction("Delete entry?") { lifecycleScope.launch { db.recordDao().deleteRecord(r); loadData() } } },
             onEdit = { r -> confirmAction("Edit entry?") { startActivity(Intent(this, InputActivity::class.java).putExtra("RECORD_ID", r.id)) } },
-            onHeaderClick = { name -> handleDrillDown(name) }
+            onHeaderClick = { name -> handleDrillDown(name) },
+            onShare = { r -> shareRecord(r) }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
@@ -90,6 +92,17 @@ class MainActivity : AppCompatActivity() {
 
         binding.fabAdd.setOnClickListener { startActivity(Intent(this, InputActivity::class.java)) }
         loadPreferences()
+    }
+
+    // --- SHARE: v2.3 Individual Record Sharing ---
+    private fun shareRecord(record: MyRecord) {
+        val shareBody = "Category: ${record.category}\nSub-Category: ${record.subCategory}\n\n${record.content}"
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Secret Data: ${record.category}")
+            putExtra(Intent.EXTRA_TEXT, shareBody)
+        }
+        startActivity(Intent.createChooser(intent, "Share via"))
     }
 
     private fun loadData() {
@@ -155,7 +168,6 @@ class MainActivity : AppCompatActivity() {
 
                             reader.forEachLine { line ->
                                 // Split only on first two commas.
-                                // Everything else (even if there are 50+ commas) becomes "Content"
                                 val parts = line.split(",", limit = 3)
                                 if (parts.size >= 3) {
                                     val cat = parts[0].trim()
