@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.title = header
     }
 
-    // --- FIXED EXPORT: Uses [BR] to protect paragraphs ---
+    // --- EXPORT: Uses [BR] marker to keep records on one line ---
     private fun exportToCsv() {
         lifecycleScope.launch {
             try {
@@ -119,7 +119,6 @@ class MainActivity : AppCompatActivity() {
                 out.append("Category,SubCategory,Content\n")
 
                 allRecords.forEach {
-                    // Replace real newlines with a marker so the CSV doesn't break
                     val safeContent = it.content.replace("\n", "[BR]").replace("\r", "[BR]")
                     out.append("${it.category},${it.subCategory},$safeContent\n")
                 }
@@ -139,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, 99)
     }
 
-    // --- FIXED IMPORT: Uses limit=3 and restores [BR] to Newlines ---
+    // --- IMPORT: Robust split handles infinite commas in Content ---
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 99 && resultCode == RESULT_OK) {
@@ -152,20 +151,21 @@ class MainActivity : AppCompatActivity() {
                             val inputStream = contentResolver.openInputStream(uri)
                             val reader = BufferedReader(InputStreamReader(inputStream))
 
-                            reader.readLine() // Skip header line
+                            reader.readLine() // Skip Header
 
                             reader.forEachLine { line ->
-                                // Split only on first two commas. Everything else is Content.
+                                // Split only on first two commas.
+                                // Everything else (even if there are 50+ commas) becomes "Content"
                                 val parts = line.split(",", limit = 3)
                                 if (parts.size >= 3) {
                                     val cat = parts[0].trim()
                                     val sub = parts[1].trim()
-                                    // Restore the [BR] markers back to real paragraphs
                                     val con = parts[2].trim().replace("[BR]", "\n")
 
                                     if (cat.isNotEmpty()) {
                                         val isDuplicate = existingRecords.any {
-                                            it.category.equals(cat, ignoreCase = true) && it.subCategory.equals(sub, ignoreCase = true)
+                                            it.category.equals(cat, ignoreCase = true) &&
+                                                    it.subCategory.equals(sub, ignoreCase = true)
                                         }
                                         if (!isDuplicate) newRecords.add(MyRecord(0, cat, sub, con))
                                     }
