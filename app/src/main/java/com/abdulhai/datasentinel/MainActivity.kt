@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: AppDatabase
     private var allRecords: List<MyRecord> = listOf()
 
-    // 0=Default, 1=Category List, 2=Sub-Category List
     private var currentMode = 0
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private val logoutRunnable = Runnable { finish() }
@@ -43,7 +42,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         db = AppDatabase.getDatabase(this)
         setupUI()
         authenticateUser()
@@ -68,7 +66,6 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
 
-        // SEARCH: Filters Category, Sub-Category, AND Content
         binding.searchBar.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 val q = s.toString().lowercase()
@@ -81,25 +78,10 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, p1: Int, p2: Int, p3: Int) {}
         })
 
-        // DRAWER SORTING OPTIONS
         val nav = binding.navView
-        nav.findViewById<Button>(R.id.menuDefault).setOnClickListener {
-            currentMode = 0
-            loadData()
-            binding.drawerLayout.closeDrawers()
-        }
-        nav.findViewById<Button>(R.id.menuCategoryView).setOnClickListener {
-            currentMode = 1
-            loadData()
-            binding.drawerLayout.closeDrawers()
-        }
-        nav.findViewById<Button>(R.id.menuSubCategoryView).setOnClickListener {
-            currentMode = 2
-            loadData()
-            binding.drawerLayout.closeDrawers()
-        }
-
-        // TOOL BUTTONS
+        nav.findViewById<Button>(R.id.menuDefault).setOnClickListener { currentMode = 0; loadData(); binding.drawerLayout.closeDrawers() }
+        nav.findViewById<Button>(R.id.menuCategoryView).setOnClickListener { currentMode = 1; loadData(); binding.drawerLayout.closeDrawers() }
+        nav.findViewById<Button>(R.id.menuSubCategoryView).setOnClickListener { currentMode = 2; loadData(); binding.drawerLayout.closeDrawers() }
         nav.findViewById<Button>(R.id.menuBackup).setOnClickListener { showBackupDialog() }
         nav.findViewById<Button>(R.id.menuImport).setOnClickListener { confirmAction("Import CSV?") { triggerImport() } }
         nav.findViewById<Button>(R.id.menuExport).setOnClickListener { confirmAction("Export CSV?") { exportToCsv() } }
@@ -114,45 +96,35 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             allRecords = db.recordDao().getAllRecords()
             when(currentMode) {
-                0 -> {
-                    adapter.updateData(allRecords)
-                    supportActionBar?.title = "Data Sentinel"
-                }
-                1 -> {
-                    val categories = allRecords.map { it.category }.distinct().sorted()
-                    adapter.updateData(categories)
-                    supportActionBar?.title = "By Category"
-                }
-                2 -> {
-                    val subCategories = allRecords.map { it.subCategory }.distinct().sorted()
-                    adapter.updateData(subCategories)
-                    supportActionBar?.title = "By Sub-Category"
-                }
+                0 -> { adapter.updateData(allRecords); supportActionBar?.title = "Data Sentinel" }
+                1 -> { adapter.updateData(allRecords.map { it.category }.distinct().sorted()); supportActionBar?.title = "By Category" }
+                2 -> { adapter.updateData(allRecords.map { it.subCategory }.distinct().sorted()); supportActionBar?.title = "By Sub-Category" }
             }
         }
     }
 
     private fun handleDrillDown(header: String) {
-        val filtered = if (currentMode == 1) {
-            allRecords.filter { it.category == header }
-        } else {
-            allRecords.filter { it.subCategory == header }
-        }
+        val filtered = if (currentMode == 1) allRecords.filter { it.category == header } else allRecords.filter { it.subCategory == header }
         currentMode = 0
         adapter.updateData(filtered)
         supportActionBar?.title = header
     }
 
+    // --- FIXED EXPORT: Uses [BR] to protect paragraphs ---
     private fun exportToCsv() {
         lifecycleScope.launch {
             try {
                 val file = File(getExternalFilesDir(null), "DataSentinel_Backup.csv")
                 val out = StringBuilder()
                 out.append("Category,SubCategory,Content\n")
-                allRecords.forEach { out.append("${it.category},${it.subCategory},${it.content}\n") }
+
+                allRecords.forEach {
+                    // Replace real newlines with a marker so the CSV doesn't break
+                    val safeContent = it.content.replace("\n", "[BR]").replace("\r", "[BR]")
+                    out.append("${it.category},${it.subCategory},$safeContent\n")
+                }
 
                 withContext(Dispatchers.IO) { file.writeText(out.toString()) }
-
                 val uri = FileProvider.getUriForFile(this@MainActivity, "${packageName}.provider", file)
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/csv"; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -167,56 +139,59 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, 99)
     }
 
+    // --- FIXED IMPORT: Uses limit=3 and restores [BR] to Newlines ---
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 99 && resultCode == RESULT_OK) {
             data?.data?.let { uri ->
                 lifecycleScope.launch {
                     try {
+                        val newRecords = mutableListOf<MyRecord>()
                         withContext(Dispatchers.IO) {
-                            val reader = BufferedReader(InputStreamReader(contentResolver.openInputStream(uri)))
-                            reader.readLine() // Skip header
+                            val existingRecords = db.recordDao().getAllRecords()
+                            val inputStream = contentResolver.openInputStream(uri)
+                            val reader = BufferedReader(InputStreamReader(inputStream))
+
+                            reader.readLine() // Skip header line
+
                             reader.forEachLine { line ->
-                                val parts = line.split(",")
+                                // Split only on first two commas. Everything else is Content.
+                                val parts = line.split(",", limit = 3)
                                 if (parts.size >= 3) {
-                                    val record = MyRecord(0, parts[0], parts[1], parts[2])
-                                    // Use a non-suspending way or a direct call here if inside IO
-                                    launch { db.recordDao().insertRecord(record) }
+                                    val cat = parts[0].trim()
+                                    val sub = parts[1].trim()
+                                    // Restore the [BR] markers back to real paragraphs
+                                    val con = parts[2].trim().replace("[BR]", "\n")
+
+                                    if (cat.isNotEmpty()) {
+                                        val isDuplicate = existingRecords.any {
+                                            it.category.equals(cat, ignoreCase = true) && it.subCategory.equals(sub, ignoreCase = true)
+                                        }
+                                        if (!isDuplicate) newRecords.add(MyRecord(0, cat, sub, con))
+                                    }
                                 }
                             }
+                            inputStream?.close()
+                            newRecords.forEach { db.recordDao().insertRecord(it) }
                         }
                         loadData()
-                        Toast.makeText(this@MainActivity, "Imported Successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Imported ${newRecords.size} records", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) { Toast.makeText(this@MainActivity, "Import failed", Toast.LENGTH_SHORT).show() }
                 }
             }
         }
     }
 
-    // --- SECURITY & PREFS ---
-
     private fun authenticateUser() {
-        // 1. Ensure the overlay is visible before the prompt appears
         binding.blurOverlay.visibility = View.VISIBLE
-
         val biometrics = BiometricPrompt(this, ContextCompat.getMainExecutor(this), object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                // 2. AUTH SUCCESS: Remove the haze so the user can see the entries
                 binding.blurOverlay.visibility = View.GONE
                 resetTimer()
                 loadData()
             }
-
-            override fun onAuthenticationError(e: Int, s: CharSequence) {
-                // 3. AUTH ERROR: Keep the haze visible and close app
-                binding.blurOverlay.visibility = View.VISIBLE
-                finish()
-            }
-
-            override fun onAuthenticationFailed() {
-                super.onAuthenticationFailed()
-                // Keep hazy
-            }
+            override fun onAuthenticationError(e: Int, s: CharSequence) { finish() }
+            override fun onAuthenticationFailed() {}
         })
         biometrics.authenticate(BiometricPrompt.PromptInfo.Builder().setTitle("Login Required").setNegativeButtonText("Exit").build())
     }
@@ -230,43 +205,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun showBackupDialog() {
         val options = arrayOf("Weekly", "Monthly")
-        AlertDialog.Builder(this)
-            .setTitle("Set Backup Reminder")
-            .setItems(options) { _, which ->
-                val interval = if (which == 0) "Weekly" else "Monthly"
-
-                // Save the choice and the current time to SharedPreferences
-                getSharedPreferences("DS_Prefs", MODE_PRIVATE).edit()
-                    .putString("backup_interval", interval)
-                    .putLong("last_backup_time", System.currentTimeMillis())
-                    .apply()
-
-                Toast.makeText(this, "Backup reminder set to $interval", Toast.LENGTH_SHORT).show()
-            }
-            .show()
+        AlertDialog.Builder(this).setTitle("Set Backup Reminder").setItems(options) { _, which ->
+            val interval = if (which == 0) "Weekly" else "Monthly"
+            getSharedPreferences("DS_Prefs", MODE_PRIVATE).edit()
+                .putString("backup_interval", interval)
+                .putLong("last_backup_time", System.currentTimeMillis()).apply()
+            Toast.makeText(this, "Backup reminder set to $interval", Toast.LENGTH_SHORT).show()
+        }.show()
     }
 
-    // Add this function to check if it's "Reminding Day"
     private fun checkBackupStatus() {
         val prefs = getSharedPreferences("DS_Prefs", MODE_PRIVATE)
-        val lastBackup = prefs.getLong("last_backup_time", 0L)
+        val last = prefs.getLong("last_backup_time", 0L)
         val interval = prefs.getString("backup_interval", "Weekly")
-
-        if (lastBackup == 0L) return
-
-        val currentTime = System.currentTimeMillis()
-        val oneWeek = 7L * 24 * 60 * 60 * 1000
-        val oneMonth = 30L * 24 * 60 * 60 * 1000
-
-        val limit = if (interval == "Weekly") oneWeek else oneMonth
-
-        if (currentTime - lastBackup > limit) {
-            AlertDialog.Builder(this)
-                .setTitle("Backup Required")
-                .setMessage("It has been over a $interval since your last backup. Would you like to export your data now?")
-                .setPositiveButton("Export Now") { _, _ -> exportToCsv() }
-                .setNegativeButton("Later", null)
-                .show()
+        if (last == 0L) return
+        val limit = if (interval == "Weekly") 7L * 24 * 60 * 60 * 1000 else 30L * 24 * 60 * 60 * 1000
+        if (System.currentTimeMillis() - last > limit) {
+            AlertDialog.Builder(this).setTitle("Backup Required").setMessage("Export now?")
+                .setPositiveButton("Export Now") { _, _ -> exportToCsv() }.setNegativeButton("Later", null).show()
         }
     }
 
