@@ -9,6 +9,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
@@ -195,9 +196,27 @@ class MainActivity : AppCompatActivity() {
     // --- SECURITY & PREFS ---
 
     private fun authenticateUser() {
+        // 1. Ensure the overlay is visible before the prompt appears
+        binding.blurOverlay.visibility = View.VISIBLE
+
         val biometrics = BiometricPrompt(this, ContextCompat.getMainExecutor(this), object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) { resetTimer(); loadData() }
-            override fun onAuthenticationError(e: Int, s: CharSequence) { finish() }
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                // 2. AUTH SUCCESS: Remove the haze so the user can see the entries
+                binding.blurOverlay.visibility = View.GONE
+                resetTimer()
+                loadData()
+            }
+
+            override fun onAuthenticationError(e: Int, s: CharSequence) {
+                // 3. AUTH ERROR: Keep the haze visible and close app
+                binding.blurOverlay.visibility = View.VISIBLE
+                finish()
+            }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                // Keep hazy
+            }
         })
         biometrics.authenticate(BiometricPrompt.PromptInfo.Builder().setTitle("Login Required").setNegativeButtonText("Exit").build())
     }

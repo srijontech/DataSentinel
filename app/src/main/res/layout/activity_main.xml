@@ -57,6 +57,16 @@
             app:backgroundTint="#006666"
             app:tint="#FFFFFF" />
 
+        <View
+            android:id="@+id/blurOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#F2FFFFFF"
+            android:visibility="visible"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="20dp"/>
+
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <com.google.android.material.navigation.NavigationView
@@ -92,4 +102,5 @@
             </ScrollView>
         </LinearLayout>
     </com.google.android.material.navigation.NavigationView>
+
 </androidx.drawerlayout.widget.DrawerLayout>
