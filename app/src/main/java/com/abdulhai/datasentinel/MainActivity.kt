@@ -2,9 +2,12 @@ package com.abdulhai.datasentinel
 
 import android.app.*
 import android.content.*
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Menu
@@ -40,6 +43,17 @@ class MainActivity : AppCompatActivity() {
     private val logoutRunnable = Runnable { finish() }
     private var selectedTimeout = 1
 
+    // 1. Permission Launcher for Android 13+ Notifications
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Toast.makeText(this, "Notifications enabled", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Reminders will not pop up without permission", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private val importLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             result.data?.data?.let { uri ->
@@ -54,14 +68,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         db = AppDatabase.getDatabase(this)
+
+        // 2. Trigger Notification Permission Request
+        checkNotificationPermission()
+
         setupUI()
         authenticateUser()
     }
 
-    // CRITICAL: Handles the data when the app is already open in the background
+    // 3. Handle data when app is open and notification is clicked
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent) // Replaces the old intent with the new one containing the reminder data
+        setIntent(intent)
         checkIntentForPopup()
     }
 
@@ -69,6 +87,14 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         loadData()
         checkBackupStatus()
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     private fun setupUI() {
@@ -119,21 +145,18 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
     }
 
-    // Logic to show the entry details in a dialog when triggered by a reminder
     private fun checkIntentForPopup() {
         val title = intent.getStringExtra("POPUP_TITLE")
         val content = intent.getStringExtra("POPUP_CONTENT")
-
         if (content != null) {
-            // Prevent popup from appearing over the biometric login screen
+            // Wait for biometric auth to finish before showing popup
             if (binding.blurOverlay.visibility == View.VISIBLE) return
 
             AlertDialog.Builder(this)
-                .setTitle(title ?: "Reminder Alert")
+                .setTitle(title ?: "Reminder")
                 .setMessage(content)
                 .setCancelable(false)
                 .setPositiveButton("Dismiss") { dialog, _ ->
-                    // Clear extras to prevent the dialog from reappearing on rotation
                     intent.removeExtra("POPUP_CONTENT")
                     intent.removeExtra("POPUP_TITLE")
                     dialog.dismiss()
@@ -171,6 +194,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun scheduleNotification(record: MyRecord, timeInMillis: Long) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        // Exact Alarm Permission check for Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Permission Needed")
+                    .setMessage("Allow 'Alarms & Reminders' for accurate notifications.")
+                    .setPositiveButton("Settings") { _, _ ->
+                        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+                return
+            }
+        }
+
         val intent = Intent(this, ReminderReceiver::class.java).apply {
             putExtra("TITLE", "${record.category}: ${record.subCategory}")
             putExtra("CONTENT", record.content)
@@ -180,13 +220,7 @@ class MainActivity : AppCompatActivity() {
             this, record.id, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
-                startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-                return
-            }
-        }
+
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent)
         Toast.makeText(this, "Reminder set!", Toast.LENGTH_LONG).show()
     }
@@ -294,7 +328,7 @@ class MainActivity : AppCompatActivity() {
                 binding.blurOverlay.visibility = View.GONE
                 resetTimer()
                 loadData()
-                checkIntentForPopup() // Check if we opened the app via a notification
+                checkIntentForPopup()
             }
             override fun onAuthenticationError(e: Int, s: CharSequence) { finish() }
             override fun onAuthenticationFailed() {}
