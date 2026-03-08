@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -20,7 +21,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -32,10 +34,7 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
-        <receiver
-            android:name=".ReminderReceiver"
-            android:enabled="true"
-            android:exported="false" />
+        <receiver android:name=".ReminderReceiver" android:enabled="true" android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -48,4 +47,5 @@
         </provider>
 
     </application>
+
 </manifest>

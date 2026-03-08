@@ -21,25 +21,27 @@ class ReminderReceiver : BroadcastReceiver() {
         val content = intent.getStringExtra("CONTENT") ?: "Data Sentinel Task"
         val id = intent.getIntExtra("ID", 0)
 
-        // 1. Play the short beep multiple beep 10 times
+        // Play alert sound
         playMultipleBeeps()
 
-        // 2. Show the Notification with Full-Screen Intent
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "sentinel_reminders"
 
+        // Create Channel with High Importance for Pop-up behavior
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(channelId, "Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
-                setBypassDnd(true)
+                description = "Critical entry reminders"
+                enableVibration(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setBypassDnd(true)
             }
             manager.createNotificationChannel(channel)
         }
 
-        // This intent points to MainActivity to "Pop Up" the app
+        // Prepare intent to launch MainActivity and trigger the popup
         val fullScreenIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("POPUP_CONTENT", content) // Pass the specific content to show
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("POPUP_CONTENT", content)
             putExtra("POPUP_TITLE", title)
         }
 
@@ -49,54 +51,29 @@ class ReminderReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_clock)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(title)
             .setContentText(content)
-            .setPriority(NotificationCompat.PRIORITY_MAX) // Use MAX for pop-up
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setFullScreenIntent(fullScreenPendingIntent, true) // <--- THIS MAKES IT POP UP
+            .setFullScreenIntent(fullScreenPendingIntent, true) // Forces the heads-up pop
             .setAutoCancel(true)
             .build()
 
         manager.notify(id, notification)
     }
 
-    // Function moved here to be accessible by onReceive
     private fun playMultipleBeeps() {
-        // Uses the ALARM stream so it's heard even if media is muted
         val toneGen = ToneGenerator(AudioManager.STREAM_ALARM, 100)
         val handler = Handler(Looper.getMainLooper())
 
         val beepRunnable = object : Runnable {
             var count = 0
             override fun run() {
-                if (count < 10) { // <--- 10 TIMES
-                    // TONE_CDMA_PIP is a sharp, clear beep perfect for alerts
+                if (count < 10) {
                     toneGen.startTone(ToneGenerator.TONE_CDMA_PIP, 200)
                     count++
-
-                    // 1 second interval between beeps
                     handler.postDelayed(this, 1000)
-                } else {
-                    toneGen.release() // Clean up memory after 10th beep
-                }
-            }
-        }
-        handler.post(beepRunnable)
-    }
-
-    // Keeping your previous logic intact as requested, though it is now unused
-    private fun playTripleBeep() {
-        val toneGen = ToneGenerator(AudioManager.STREAM_ALARM, 100)
-        val handler = Handler(Looper.getMainLooper())
-
-        val beepRunnable = object : Runnable {
-            var count = 0
-            override fun run() {
-                if (count < 3) {
-                    toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 200)
-                    count++
-                    handler.postDelayed(this, 600)
                 } else {
                     toneGen.release()
                 }

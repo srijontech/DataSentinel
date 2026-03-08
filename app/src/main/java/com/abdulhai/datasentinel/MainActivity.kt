@@ -40,7 +40,6 @@ class MainActivity : AppCompatActivity() {
     private val logoutRunnable = Runnable { finish() }
     private var selectedTimeout = 1
 
-    // Modern replacement for onActivityResult (Used for CSV Import)
     private val importLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             result.data?.data?.let { uri ->
@@ -57,6 +56,13 @@ class MainActivity : AppCompatActivity() {
         db = AppDatabase.getDatabase(this)
         setupUI()
         authenticateUser()
+    }
+
+    // CRITICAL: Handles the data when the app is already open in the background
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent) // Replaces the old intent with the new one containing the reminder data
+        checkIntentForPopup()
     }
 
     override fun onResume() {
@@ -113,15 +119,23 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
     }
 
+    // Logic to show the entry details in a dialog when triggered by a reminder
     private fun checkIntentForPopup() {
         val title = intent.getStringExtra("POPUP_TITLE")
         val content = intent.getStringExtra("POPUP_CONTENT")
+
         if (content != null) {
+            // Prevent popup from appearing over the biometric login screen
+            if (binding.blurOverlay.visibility == View.VISIBLE) return
+
             AlertDialog.Builder(this)
-                .setTitle(title)
+                .setTitle(title ?: "Reminder Alert")
                 .setMessage(content)
+                .setCancelable(false)
                 .setPositiveButton("Dismiss") { dialog, _ ->
+                    // Clear extras to prevent the dialog from reappearing on rotation
                     intent.removeExtra("POPUP_CONTENT")
+                    intent.removeExtra("POPUP_TITLE")
                     dialog.dismiss()
                 }
                 .show()
@@ -280,7 +294,7 @@ class MainActivity : AppCompatActivity() {
                 binding.blurOverlay.visibility = View.GONE
                 resetTimer()
                 loadData()
-                checkIntentForPopup()
+                checkIntentForPopup() // Check if we opened the app via a notification
             }
             override fun onAuthenticationError(e: Int, s: CharSequence) { finish() }
             override fun onAuthenticationFailed() {}
