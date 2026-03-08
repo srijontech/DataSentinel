@@ -42,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:padding="8dp"
-                android:text="Data Sentinel v3.0 | Abdul Hai Bhuyan"
+                android:text="Data Sentinel v5.0 | Abdul Hai Bhuyan"
                 android:textSize="10sp"
                 android:textColor="#000000" />
         </LinearLayout>

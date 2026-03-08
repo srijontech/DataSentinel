@@ -1,6 +1,6 @@
 package com.abdulhai.datasentinel
 
-import android.app.AlertDialog
+import android.app.*
 import android.content.*
 import android.os.Bundle
 import android.os.Handler
@@ -11,6 +11,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
@@ -25,6 +26,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -38,10 +40,20 @@ class MainActivity : AppCompatActivity() {
     private val logoutRunnable = Runnable { finish() }
     private var selectedTimeout = 1
 
+    // Modern replacement for onActivityResult (Used for CSV Import)
+    private val importLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            result.data?.data?.let { uri ->
+                processImport(uri)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
         db = AppDatabase.getDatabase(this)
         setupUI()
         authenticateUser()
@@ -50,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         loadData()
+        checkBackupStatus()
     }
 
     private fun setupUI() {
@@ -58,13 +71,18 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
 
-        // Updated for v2.4: Added the 6th parameter for Long Click
         adapter = RecordAdapter(listOf(),
-            onDelete = { r -> confirmAction("Delete entry?") { lifecycleScope.launch { db.recordDao().deleteRecord(r); loadData() } } },
+            onDelete = { r -> confirmAction("Delete entry?") {
+                lifecycleScope.launch {
+                    db.recordDao().deleteRecord(r)
+                    loadData()
+                }
+            } },
             onEdit = { r -> confirmAction("Edit entry?") { startActivity(Intent(this, InputActivity::class.java).putExtra("RECORD_ID", r.id)) } },
             onHeaderClick = { name -> handleDrillDown(name) },
             onShare = { r -> shareRecord(r) },
-            onLongClick = { r -> showCopyDialog(r) }
+            onLongClick = { r -> showCopyDialog(r) },
+            onReminderClick = { r -> showReminderDialog(r) }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
@@ -95,14 +113,77 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
     }
 
-    // --- NEW IN v2.4: Copy Dialog ---
+    private fun checkIntentForPopup() {
+        val title = intent.getStringExtra("POPUP_TITLE")
+        val content = intent.getStringExtra("POPUP_CONTENT")
+        if (content != null) {
+            AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(content)
+                .setPositiveButton("Dismiss") { dialog, _ ->
+                    intent.removeExtra("POPUP_CONTENT")
+                    dialog.dismiss()
+                }
+                .show()
+        }
+    }
+
+    private fun showReminderDialog(record: MyRecord) {
+        AlertDialog.Builder(this)
+            .setTitle("Remind You Later?")
+            .setMessage("Would you like to schedule a notification for this entry?")
+            .setPositiveButton("Yes") { _, _ -> pickTimeForReminder(record) }
+            .setNegativeButton("No", null)
+            .show()
+    }
+
+    private fun pickTimeForReminder(record: MyRecord) {
+        val calendar = Calendar.getInstance()
+        DatePickerDialog(this, { _, year, month, day ->
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month)
+            calendar.set(Calendar.DAY_OF_MONTH, day)
+            TimePickerDialog(this, { _, hour, minute ->
+                calendar.set(Calendar.HOUR_OF_DAY, hour)
+                calendar.set(Calendar.MINUTE, minute)
+                calendar.set(Calendar.SECOND, 0)
+                if (calendar.timeInMillis <= System.currentTimeMillis()) {
+                    Toast.makeText(this, "Please pick a future time", Toast.LENGTH_SHORT).show()
+                } else {
+                    scheduleNotification(record, calendar.timeInMillis)
+                }
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false).show()
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+    }
+
+    private fun scheduleNotification(record: MyRecord, timeInMillis: Long) {
+        val intent = Intent(this, ReminderReceiver::class.java).apply {
+            putExtra("TITLE", "${record.category}: ${record.subCategory}")
+            putExtra("CONTENT", record.content)
+            putExtra("ID", record.id)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            this, record.id, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+                return
+            }
+        }
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent)
+        Toast.makeText(this, "Reminder set!", Toast.LENGTH_LONG).show()
+    }
+
     private fun showCopyDialog(record: MyRecord) {
         AlertDialog.Builder(this)
             .setItems(arrayOf("Copy Content")) { _, _ ->
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Sentinel Content", record.content)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
             }.show()
     }
 
@@ -144,6 +225,8 @@ class MainActivity : AppCompatActivity() {
                     out.append("${it.category},${it.subCategory},$safeContent\n")
                 }
                 withContext(Dispatchers.IO) { file.writeText(out.toString()) }
+                getSharedPreferences("DS_Prefs", MODE_PRIVATE).edit()
+                    .putLong("last_backup_time", System.currentTimeMillis()).apply()
                 val uri = FileProvider.getUriForFile(this@MainActivity, "${packageName}.provider", file)
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/csv"; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -155,43 +238,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun triggerImport() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "text/*" }
-        startActivityForResult(intent, 99)
+        importLauncher.launch(intent)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 99 && resultCode == RESULT_OK) {
-            data?.data?.let { uri ->
-                lifecycleScope.launch {
-                    try {
-                        val newRecords = mutableListOf<MyRecord>()
-                        withContext(Dispatchers.IO) {
-                            val existingRecords = db.recordDao().getAllRecords()
-                            val inputStream = contentResolver.openInputStream(uri)
-                            val reader = BufferedReader(InputStreamReader(inputStream))
-                            reader.readLine()
-                            reader.forEachLine { line ->
-                                val parts = line.split(",", limit = 3)
-                                if (parts.size >= 3) {
-                                    val cat = parts[0].trim()
-                                    val sub = parts[1].trim()
-                                    val con = parts[2].trim().replace("[BR]", "\n")
-                                    if (cat.isNotEmpty()) {
-                                        val isDuplicate = existingRecords.any {
-                                            it.category.equals(cat, ignoreCase = true) && it.subCategory.equals(sub, ignoreCase = true)
-                                        }
-                                        if (!isDuplicate) newRecords.add(MyRecord(0, cat, sub, con))
-                                    }
+    private fun processImport(uri: android.net.Uri) {
+        lifecycleScope.launch {
+            try {
+                val newRecords = mutableListOf<MyRecord>()
+                withContext(Dispatchers.IO) {
+                    val existingRecords = db.recordDao().getAllRecords()
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val reader = BufferedReader(InputStreamReader(inputStream))
+                    reader.readLine()
+                    reader.forEachLine { line ->
+                        val parts = line.split(",", limit = 3)
+                        if (parts.size >= 3) {
+                            val cat = parts[0].trim()
+                            val sub = parts[1].trim()
+                            val con = parts[2].trim().replace("[BR]", "\n")
+                            if (cat.isNotEmpty()) {
+                                val isDuplicate = existingRecords.any {
+                                    it.category.equals(cat, ignoreCase = true) && it.subCategory.equals(sub, ignoreCase = true)
                                 }
+                                if (!isDuplicate) newRecords.add(MyRecord(0, cat, sub, con))
                             }
-                            inputStream?.close()
-                            newRecords.forEach { db.recordDao().insertRecord(it) }
                         }
-                        loadData()
-                        Toast.makeText(this@MainActivity, "Imported ${newRecords.size} records", Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) { Toast.makeText(this@MainActivity, "Import failed", Toast.LENGTH_SHORT).show() }
+                    }
+                    inputStream?.close()
+                    newRecords.forEach { db.recordDao().insertRecord(it) }
                 }
-            }
+                loadData()
+                Toast.makeText(this@MainActivity, "Imported!", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) { Toast.makeText(this@MainActivity, "Import failed", Toast.LENGTH_SHORT).show() }
         }
     }
 
@@ -202,6 +280,7 @@ class MainActivity : AppCompatActivity() {
                 binding.blurOverlay.visibility = View.GONE
                 resetTimer()
                 loadData()
+                checkIntentForPopup()
             }
             override fun onAuthenticationError(e: Int, s: CharSequence) { finish() }
             override fun onAuthenticationFailed() {}
@@ -217,25 +296,43 @@ class MainActivity : AppCompatActivity() {
     override fun onUserInteraction() { super.onUserInteraction(); resetTimer() }
 
     private fun showBackupDialog() {
-        val options = arrayOf("Weekly", "Monthly")
-        AlertDialog.Builder(this).setTitle("Set Backup Reminder").setItems(options) { _, which ->
-            val interval = if (which == 0) "Weekly" else "Monthly"
-            getSharedPreferences("DS_Prefs", MODE_PRIVATE).edit()
-                .putString("backup_interval", interval)
-                .putLong("last_backup_time", System.currentTimeMillis()).apply()
-            Toast.makeText(this, "Backup reminder set to $interval", Toast.LENGTH_SHORT).show()
-        }.show()
+        val options = arrayOf("Daily", "Weekly", "Monthly", "Half-Yearly", "Not Required")
+        AlertDialog.Builder(this)
+            .setTitle("Set Backup Reminder")
+            .setItems(options) { _, which ->
+                val interval = options[which]
+                getSharedPreferences("DS_Prefs", MODE_PRIVATE).edit()
+                    .putString("backup_interval", interval)
+                    .putLong("last_backup_time", System.currentTimeMillis())
+                    .apply()
+                Toast.makeText(this, "Reminder set to $interval", Toast.LENGTH_SHORT).show()
+            }.show()
     }
 
     private fun checkBackupStatus() {
         val prefs = getSharedPreferences("DS_Prefs", MODE_PRIVATE)
         val last = prefs.getLong("last_backup_time", 0L)
+        val lastSnoozed = prefs.getLong("last_snooze_time", 0L)
         val interval = prefs.getString("backup_interval", "Weekly")
-        if (last == 0L) return
-        val limit = if (interval == "Weekly") 7L * 24 * 60 * 60 * 1000 else 30L * 24 * 60 * 60 * 1000
+        if (last == 0L || interval == "Not Required") return
+        val oneDay = 24L * 60 * 60 * 1000
+        if (System.currentTimeMillis() - lastSnoozed < oneDay) return
+        val limit = when (interval) {
+            "Daily" -> oneDay
+            "Weekly" -> 7 * oneDay
+            "Monthly" -> 30 * oneDay
+            "Half-Yearly" -> 182 * oneDay
+            else -> 7 * oneDay
+        }
         if (System.currentTimeMillis() - last > limit) {
-            AlertDialog.Builder(this).setTitle("Backup Required").setMessage("Export now?")
-                .setPositiveButton("Export Now") { _, _ -> exportToCsv() }.setNegativeButton("Later", null).show()
+            AlertDialog.Builder(this)
+                .setTitle("Backup Reminder")
+                .setMessage("Your $interval backup is due.")
+                .setPositiveButton("Export Now") { _, _ -> exportToCsv() }
+                .setNegativeButton("Later") { _, _ ->
+                    prefs.edit().putLong("last_snooze_time", System.currentTimeMillis()).apply()
+                }
+                .show()
         }
     }
 

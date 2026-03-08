@@ -15,7 +15,8 @@ class RecordAdapter(
     private val onEdit: (MyRecord) -> Unit,
     private val onHeaderClick: (String) -> Unit,
     private val onShare: (MyRecord) -> Unit,
-    private val onLongClick: (MyRecord) -> Unit // v2.4 callback
+    private val onLongClick: (MyRecord) -> Unit,
+    private val onReminderClick: (MyRecord) -> Unit // NEW: Reminder Callback
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -46,11 +47,11 @@ class RecordAdapter(
             holder.btnDelete.setOnClickListener { onDelete(item) }
             holder.btnEdit.setOnClickListener { onEdit(item) }
             holder.btnShare.setOnClickListener { onShare(item) }
+            holder.btnClock.setOnClickListener { onReminderClick(item) } // NEW: Clock Click
 
-            // v2.4: Long Click triggers the copy callback
             holder.card.setOnLongClickListener {
                 onLongClick(item)
-                true // Returns true so it doesn't trigger a normal click
+                true
             }
         } else if (holder is HeaderViewHolder && item is String) {
             holder.headerText.text = item
@@ -73,6 +74,7 @@ class RecordAdapter(
         val btnDelete: ImageButton = view.findViewById(R.id.btnDelete)
         val btnEdit: ImageButton = view.findViewById(R.id.btnEdit)
         val btnShare: ImageButton = view.findViewById(R.id.btnShare)
+        val btnClock: ImageButton = view.findViewById(R.id.btnClock) // NEW: Reference for ViewHolder
     }
 
     class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {

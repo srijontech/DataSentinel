@@ -43,25 +43,33 @@
             android:layout_marginTop="8dp">
 
             <ImageButton
+                android:id="@+id/btnClock"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_recent_history"
+                android:contentDescription="Remind Me" />
+
+            <ImageButton
                 android:id="@+id/btnShare"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_share"
                 android:contentDescription="Share" />
 
             <ImageButton
                 android:id="@+id/btnEdit"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_edit"
                 android:contentDescription="Edit" />
 
             <ImageButton
                 android:id="@+id/btnDelete"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_delete"
                 android:contentDescription="Delete" />

@@ -18,8 +18,10 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "data_sentinel_db"
-                ).build()
+                    "record_database"
+                )
+                    .fallbackToDestructiveMigration() // <--- ADD THIS LINE TO FIX THE CRASH
+                    .build()
                 INSTANCE = instance
                 instance
             }

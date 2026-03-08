@@ -5,6 +5,9 @@ pluginManagement {
                 includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("com\\.google.*")
                 includeGroupByRegex("androidx.*")
+                // ADDED: Include the API client groups for Google Drive
+                includeGroupByRegex("com\\.google\\.api-client.*")
+                includeGroupByRegex("com\\.google\\.apis.*")
             }
         }
         mavenCentral()

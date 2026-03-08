@@ -8,5 +8,6 @@ data class MyRecord(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val category: String,
     val subCategory: String,
-    val content: String
+    val content: String,
+    val reminderTime: Long = 0L // NEW: Stores the scheduled notification time
 )

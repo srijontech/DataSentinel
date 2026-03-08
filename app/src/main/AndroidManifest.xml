@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -27,6 +31,11 @@
             android:name=".InputActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <receiver
+            android:name=".ReminderReceiver"
+            android:enabled="true"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
